@@ -75,15 +75,16 @@ jobs:
             [ -f "$ko" ] && modinfo "$ko" || true
           done
 
-      - name: Upload artifacts
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: kbuild-${{ matrix.branch }}
-          path: |
-            tests/kmod/kh_test.ko
-            kmod/kernelhook.ko
-            kmod/Module.symvers
-            examples/kbuild_hello/kbuild_hello.ko
-          if-no-files-found: warn
-          retention-days: 14
+      # TODO: re-enable upload-artifact after CI stabilises
+      # - name: Upload artifacts
+      #   if: success()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: kbuild-${{ matrix.branch }}
+      #     path: |
+      #       tests/kmod/kh_test.ko
+      #       kmod/kernelhook.ko
+      #       kmod/Module.symvers
+      #       examples/kbuild_hello/kbuild_hello.ko
+      #     if-no-files-found: warn
+      #     retention-days: 14
