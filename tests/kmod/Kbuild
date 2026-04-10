@@ -26,4 +26,5 @@ kh_test-y := test_main.o test_hook_kernel.o \
 
 ccflags-y := -I$(src)/../../include -I$(src)/../../include/arch/arm64 -I$(src) \
              -Wno-declaration-after-statement \
-             -Wno-unknown-sanitizers
+             -Wno-unknown-sanitizers \
+             -Wno-gcc-compat

@@ -49,7 +49,12 @@ int kmod_log_init(void)
         kp_log_func = (log_func_t)(uintptr_t)ksyms_lookup("printk");
     if (!kp_log_func && !kp_vprintk_func) return -1;
 #else
+    /* _printk was added in 5.15; older kernels export printk directly */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
     kp_log_func = (log_func_t)_printk;
+#else
+    kp_log_func = (log_func_t)printk;
+#endif
 #endif
     return 0;
 }

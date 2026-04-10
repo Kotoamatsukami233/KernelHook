@@ -60,10 +60,13 @@ int kmod_log_init(void)
         kp_log_func = (log_func_t)(uintptr_t)ksyms_lookup("printk");
     if (!kp_log_func && !kp_vprintk_func) return -1;
 #else
-    /* Modern kernels (5.15+) define printk as a function-like macro that
-     * expands to printk_index_wrapper(...), so taking its address fails.
-     * _printk is the real exported function. */
+    /* 5.15+ defines printk as a macro (printk_index_wrapper); _printk is
+     * the real exported function. On 5.10 and older, printk is a function. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
     kp_log_func = (log_func_t)_printk;
+#else
+    kp_log_func = (log_func_t)printk;
+#endif
 #endif
     return 0;
 }
