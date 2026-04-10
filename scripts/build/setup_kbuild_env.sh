@@ -41,12 +41,9 @@ if [ "${SKIP_APT:-0}" != "1" ] && command -v apt-get >/dev/null 2>&1; then
         sudo apt-get install -y --no-install-recommends clang-15 lld-15 llvm-15
         # Kconfig checks for 'ld.lld' without suffix; ensure it exists
         [ ! -f /usr/bin/ld.lld ] && sudo ln -s /usr/bin/ld.lld-15 /usr/bin/ld.lld || true
-        # kconfig host tools break under clang-15; use gcc for host compilation
-        export HOSTCC_FLAG="HOSTCC=gcc"
         export LLVM_SUFFIX=-15
     else
         sudo apt-get install -y --no-install-recommends clang lld llvm llvm-dev
-        export HOSTCC_FLAG=
         export LLVM_SUFFIX=
     fi
 
@@ -61,7 +58,7 @@ export LLVM_FLAG
 # Persist for subsequent CI steps (GITHUB_ENV is step-scoped)
 if [ -n "${GITHUB_ENV:-}" ]; then
     echo "LLVM_FLAG=$LLVM_FLAG" >> "$GITHUB_ENV"
-    echo "HOSTCC_FLAG=${HOSTCC_FLAG:-}" >> "$GITHUB_ENV"
+
 fi
 
 # ---------- Kernel source ----------
@@ -81,7 +78,7 @@ if [ -f "$KERNEL_OUT/Module.symvers" ] && [ -f "$KERNEL_OUT/.config" ]; then
     echo "==> Cached build output found, skipping configure + vmlinux build"
     # Re-run modules_prepare to ensure generated headers are up to date
     # (fast no-op if nothing changed)
-    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG" ${HOSTCC_FLAG:-} \
+    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG"  \
          modules_prepare -j"$(nproc)"
     echo "==> Kbuild environment ready (cached)"
     exit 0
@@ -95,7 +92,7 @@ else
     CFG=defconfig
 fi
 echo "==> Configuring with $CFG"
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG" ${HOSTCC_FLAG:-} "$CFG"
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG"  "$CFG"
 
 # Kernel 6.12+ needs pahole >= 1.26 for BTF; Ubuntu 24.04 has 1.25.
 # We only need Module.symvers for out-of-tree builds, not BTF.
@@ -105,21 +102,21 @@ KVER_MINOR="${KVER#*.}"
 if [ "$KVER_MAJOR" -ge 6 ] && [ "$KVER_MINOR" -ge 12 ] 2>/dev/null; then
     echo "==> Disabling BTF for kernel $KVER (pahole too old)"
     "$KERNEL_DIR/scripts/config" --file "$KERNEL_OUT/.config" --disable DEBUG_INFO_BTF
-    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG" ${HOSTCC_FLAG:-} olddefconfig
+    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG"  olddefconfig
 fi
 
 # ---------- modules_prepare ----------
 
 echo "==> modules_prepare"
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG" ${HOSTCC_FLAG:-} \
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG"  \
      modules_prepare -j"$(nproc)"
 
 # ---------- vmlinux (for Module.symvers) ----------
 
 echo "==> Building vmlinux (for Module.symvers)"
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG" ${HOSTCC_FLAG:-} \
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG"  \
      vmlinux -j"$(nproc)" || \
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG" ${HOSTCC_FLAG:-} \
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG"  \
      Image -j"$(nproc)"
 
 echo "==> Kbuild environment ready"
