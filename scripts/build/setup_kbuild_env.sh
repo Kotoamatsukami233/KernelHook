@@ -45,6 +45,18 @@ else
     echo "==> Kernel source already present at $KERNEL_DIR"
 fi
 
+# ---------- Check for cached build output ----------
+
+if [ -f "$KERNEL_OUT/Module.symvers" ] && [ -f "$KERNEL_OUT/.config" ]; then
+    echo "==> Cached build output found, skipping configure + vmlinux build"
+    # Re-run modules_prepare to ensure generated headers are up to date
+    # (fast no-op if nothing changed)
+    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
+         modules_prepare -j"$(nproc)"
+    echo "==> Kbuild environment ready (cached)"
+    exit 0
+fi
+
 # ---------- Configure ----------
 
 if [ -f "$KERNEL_DIR/arch/arm64/configs/gki_defconfig" ]; then

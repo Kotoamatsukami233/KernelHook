@@ -54,6 +54,12 @@ jobs:
           path: ${{ env.KERNEL_DIR }}
           key: gki-src-${{ matrix.branch }}-v1
 
+      - name: Cache kernel build output
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.KERNEL_OUT }}
+          key: gki-out-${{ matrix.branch }}-v1
+
       - name: Setup kbuild environment
         run: bash scripts/build/setup_kbuild_env.sh
         env:
