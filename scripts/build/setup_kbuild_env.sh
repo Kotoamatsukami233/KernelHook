@@ -32,27 +32,29 @@ if [ "${SKIP_APT:-0}" != "1" ] && command -v apt-get >/dev/null 2>&1; then
 
     # Older kernels (5.10, 5.15) need clang-15 — newer clang rejects
     # global register variables in asm/stack_pointer.h.
+    # Use LLVM=-15 suffix so kbuild picks clang-15/ld.lld-15/etc.
     KVER="${BRANCH##*-}"
     KVER_MAJOR="${KVER%%.*}"
-    KVER_MINOR="${KVER#*.}"
     if [ "$KVER_MAJOR" -lt 6 ] 2>/dev/null; then
         echo "==> Kernel $KVER: installing clang-15 for compatibility"
         sudo apt-get install -y --no-install-recommends clang-15 lld-15 llvm-15
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-15 100
-        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-15 100
-        sudo update-alternatives --install /usr/bin/ld.lld ld.lld /usr/bin/ld.lld-15 100
-        sudo update-alternatives --install /usr/bin/llvm-ar llvm-ar /usr/bin/llvm-ar-15 100
-        sudo update-alternatives --install /usr/bin/llvm-nm llvm-nm /usr/bin/llvm-nm-15 100
-        sudo update-alternatives --install /usr/bin/llvm-objcopy llvm-objcopy /usr/bin/llvm-objcopy-15 100
-        sudo update-alternatives --install /usr/bin/llvm-objdump llvm-objdump /usr/bin/llvm-objdump-15 100
-        sudo update-alternatives --install /usr/bin/llvm-readelf llvm-readelf /usr/bin/llvm-readelf-15 100
-        sudo update-alternatives --install /usr/bin/llvm-strip llvm-strip /usr/bin/llvm-strip-15 100
+        export LLVM_SUFFIX=-15
     else
         sudo apt-get install -y --no-install-recommends clang lld llvm llvm-dev
+        export LLVM_SUFFIX=
     fi
 
-    clang --version
-    ld.lld --version
+    echo "LLVM_SUFFIX=$LLVM_SUFFIX"
+fi
+
+# LLVM flag for make: LLVM=1 (default) or LLVM=-15 (for old kernels)
+LLVM_FLAG="${LLVM_SUFFIX:+$LLVM_SUFFIX}"
+LLVM_FLAG="${LLVM_FLAG:-1}"
+export LLVM_FLAG
+
+# Persist for subsequent CI steps (GITHUB_ENV is step-scoped)
+if [ -n "${GITHUB_ENV:-}" ]; then
+    echo "LLVM_FLAG=$LLVM_FLAG" >> "$GITHUB_ENV"
 fi
 
 # ---------- Kernel source ----------
@@ -72,7 +74,7 @@ if [ -f "$KERNEL_OUT/Module.symvers" ] && [ -f "$KERNEL_OUT/.config" ]; then
     echo "==> Cached build output found, skipping configure + vmlinux build"
     # Re-run modules_prepare to ensure generated headers are up to date
     # (fast no-op if nothing changed)
-    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
+    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG" \
          modules_prepare -j"$(nproc)"
     echo "==> Kbuild environment ready (cached)"
     exit 0
@@ -86,20 +88,20 @@ else
     CFG=defconfig
 fi
 echo "==> Configuring with $CFG"
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 "$CFG"
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG" "$CFG"
 
 # ---------- modules_prepare ----------
 
 echo "==> modules_prepare"
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG" \
      modules_prepare -j"$(nproc)"
 
 # ---------- vmlinux (for Module.symvers) ----------
 
 echo "==> Building vmlinux (for Module.symvers)"
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG" \
      vmlinux -j"$(nproc)" || \
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG" \
      Image -j"$(nproc)"
 
 echo "==> Kbuild environment ready"
