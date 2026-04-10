@@ -60,7 +60,8 @@ ALLOW='^(_?printk|printk_ratelimit|memcpy|memset|memmove|memcmp|__memcpy|__memse
 'fortify_panic|__fortify_panic|__fortify_report|'\
 'mem_alloc_profiling_key|'\
 '__arm64_sys_.*|aarch64_insn_.*|'\
-'preempt_count_add|preempt_count_sub|__preempt_count_add|__preempt_count_sub)$'
+'preempt_count_add|preempt_count_sub|__preempt_count_add|__preempt_count_sub|'\
+'__cfi_slowpath|__cfi_slowpath_diag|__ubsan_handle_cfi_check_fail_abort)$'
 
 BAD=0
 while IFS= read -r sym; do
