@@ -5,15 +5,10 @@
  * Kbuild: direct printk reference.
  */
 
-#ifdef KMOD_FREESTANDING
-#include "../shim/shim.h"
-#include <ksyms.h>
-#include <stdarg.h>
-#else
 #include <linux/kernel.h>
 #include <linux/printk.h>
 #include <linux/stdarg.h>
-#endif
+#include <ksyms.h>
 
 /* hook.h provides KCFI_EXEMPT — pure macros, kbuild-safe after the
  * ptrauth.h gating added earlier on this branch. */

@@ -8,11 +8,8 @@
 #include <insn.h>
 #include <pgtable.h>
 #include <log.h>
-#ifdef KMOD_FREESTANDING
 #include <ksyms.h>
-#else
 #include <linux/set_memory.h>
-#endif
 
 typedef uint32_t inst_type_t;
 typedef uint32_t inst_mask_t;
