@@ -26,10 +26,31 @@ if [ "${SKIP_APT:-0}" != "1" ] && command -v apt-get >/dev/null 2>&1; then
     sudo apt-get update
     sudo apt-get install -y --no-install-recommends \
         bc bison flex libssl-dev libelf-dev libdw-dev cpio kmod python3 ccache \
-        clang lld llvm llvm-dev \
         gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
         rsync zstd xz-utils \
         dwarves
+
+    # Older kernels (5.10, 5.15) need clang-15 — newer clang rejects
+    # global register variables in asm/stack_pointer.h.
+    KVER="${BRANCH##*-}"
+    KVER_MAJOR="${KVER%%.*}"
+    KVER_MINOR="${KVER#*.}"
+    if [ "$KVER_MAJOR" -lt 6 ] 2>/dev/null; then
+        echo "==> Kernel $KVER: installing clang-15 for compatibility"
+        sudo apt-get install -y --no-install-recommends clang-15 lld-15 llvm-15
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-15 100
+        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-15 100
+        sudo update-alternatives --install /usr/bin/ld.lld ld.lld /usr/bin/ld.lld-15 100
+        sudo update-alternatives --install /usr/bin/llvm-ar llvm-ar /usr/bin/llvm-ar-15 100
+        sudo update-alternatives --install /usr/bin/llvm-nm llvm-nm /usr/bin/llvm-nm-15 100
+        sudo update-alternatives --install /usr/bin/llvm-objcopy llvm-objcopy /usr/bin/llvm-objcopy-15 100
+        sudo update-alternatives --install /usr/bin/llvm-objdump llvm-objdump /usr/bin/llvm-objdump-15 100
+        sudo update-alternatives --install /usr/bin/llvm-readelf llvm-readelf /usr/bin/llvm-readelf-15 100
+        sudo update-alternatives --install /usr/bin/llvm-strip llvm-strip /usr/bin/llvm-strip-15 100
+    else
+        sudo apt-get install -y --no-install-recommends clang lld llvm llvm-dev
+    fi
+
     clang --version
     ld.lld --version
 fi
