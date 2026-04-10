@@ -35,7 +35,8 @@ if [ "${SKIP_APT:-0}" != "1" ] && command -v apt-get >/dev/null 2>&1; then
     # Use LLVM=-15 suffix so kbuild picks clang-15/ld.lld-15/etc.
     KVER="${BRANCH##*-}"
     KVER_MAJOR="${KVER%%.*}"
-    if [ "$KVER_MAJOR" -lt 6 ] 2>/dev/null; then
+    KVER_MINOR="${KVER#*.}"
+    if [ "$KVER_MAJOR" -eq 5 ] && [ "$KVER_MINOR" -le 10 ] 2>/dev/null; then
         echo "==> Kernel $KVER: installing clang-15 for compatibility"
         sudo apt-get install -y --no-install-recommends clang-15 lld-15 llvm-15
         export LLVM_SUFFIX=-15
