@@ -39,6 +39,8 @@ if [ "${SKIP_APT:-0}" != "1" ] && command -v apt-get >/dev/null 2>&1; then
     if [ "$KVER_MAJOR" -eq 5 ] && [ "$KVER_MINOR" -le 10 ] 2>/dev/null; then
         echo "==> Kernel $KVER: installing clang-15 for compatibility"
         sudo apt-get install -y --no-install-recommends clang-15 lld-15 llvm-15
+        # Kconfig checks for 'ld.lld' without suffix; ensure it exists
+        [ ! -f /usr/bin/ld.lld ] && sudo ln -s /usr/bin/ld.lld-15 /usr/bin/ld.lld || true
         export LLVM_SUFFIX=-15
     else
         sudo apt-get install -y --no-install-recommends clang lld llvm llvm-dev
