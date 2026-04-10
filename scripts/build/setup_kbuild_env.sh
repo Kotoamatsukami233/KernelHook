@@ -25,7 +25,7 @@ if [ "${SKIP_APT:-0}" != "1" ] && command -v apt-get >/dev/null 2>&1; then
     echo "==> Installing host toolchain"
     sudo apt-get update
     sudo apt-get install -y --no-install-recommends \
-        bc bison flex libssl-dev libelf-dev cpio kmod python3 ccache \
+        bc bison flex libssl-dev libelf-dev libdw-dev cpio kmod python3 ccache \
         clang lld llvm llvm-dev \
         gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
         rsync zstd xz-utils \
