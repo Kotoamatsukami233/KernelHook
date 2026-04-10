@@ -34,24 +34,28 @@ if [ "${SKIP_APT:-0}" != "1" ] && command -v apt-get >/dev/null 2>&1; then
         rsync zstd xz-utils \
         dwarves
 
-    # Kernel 5.10 needs clang <= 13 (stack_pointer.h global register var).
-    # Ubuntu 22.04 ships clang-14 by default; install clang-12 for 5.10.
+    # Kernel 5.10 needs Google's prebuilt clang (upstream clang rejects
+    # global register variables in asm/stack_pointer.h).
     KVER="${BRANCH##*-}"
     KVER_MAJOR="${KVER%%.*}"
     KVER_MINOR="${KVER#*.}"
     if [ "$KVER_MAJOR" -eq 5 ] && [ "$KVER_MINOR" -le 10 ] 2>/dev/null; then
-        echo "==> Kernel $KVER: installing clang-12 for compatibility"
-        sudo apt-get install -y --no-install-recommends clang-12 lld-12 llvm-12
-        LLVM_VER=-12
+        CLANG_REV=r416183b
+        CLANG_URL="https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android12-release/clang-${CLANG_REV}.tar.gz"
+        CLANG_DIR="$HOME/clang-${CLANG_REV}"
+        if [ ! -d "$CLANG_DIR/bin" ]; then
+            echo "==> Downloading Google prebuilt clang-${CLANG_REV} for kernel $KVER"
+            mkdir -p "$CLANG_DIR"
+            curl -sSL "$CLANG_URL" | tar xz -C "$CLANG_DIR"
+        fi
+        export PATH="$CLANG_DIR/bin:$PATH"
+        if [ -n "${GITHUB_ENV:-}" ]; then
+            echo "PATH=$CLANG_DIR/bin:$PATH" >> "$GITHUB_ENV"
+        fi
     fi
 
-    # Persist LLVM version suffix for build step
-    if [ -n "${LLVM_VER:-}" ] && [ -n "${GITHUB_ENV:-}" ]; then
-        echo "LLVM_VER=$LLVM_VER" >> "$GITHUB_ENV"
-    fi
-
-    clang${LLVM_VER:-} --version
-    ld.lld${LLVM_VER:-} --version
+    clang --version
+    ld.lld --version
 fi
 
 # ---------- Kernel source ----------
@@ -69,7 +73,7 @@ fi
 
 if [ -f "$KERNEL_OUT/Module.symvers" ] && [ -f "$KERNEL_OUT/.config" ]; then
     echo "==> Cached build output found, skipping configure + vmlinux build"
-    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="${LLVM_VER:-1}" \
+    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
          modules_prepare -j"$(nproc)"
     echo "==> Kbuild environment ready (cached)"
     exit 0
@@ -83,7 +87,7 @@ else
     CFG=defconfig
 fi
 echo "==> Configuring with $CFG"
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="${LLVM_VER:-1}" "$CFG"
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 "$CFG"
 
 # Kernel 6.12+ needs pahole >= 1.26 for BTF; Ubuntu 24.04 has 1.25.
 # We only need Module.symvers for out-of-tree builds, not BTF.
@@ -93,21 +97,21 @@ KVER_MINOR="${KVER#*.}"
 if [ "$KVER_MAJOR" -ge 6 ] && [ "$KVER_MINOR" -ge 12 ] 2>/dev/null; then
     echo "==> Disabling BTF for kernel $KVER (pahole too old)"
     "$KERNEL_DIR/scripts/config" --file "$KERNEL_OUT/.config" --disable DEBUG_INFO_BTF
-    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="${LLVM_VER:-1}" olddefconfig
+    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 olddefconfig
 fi
 
 # ---------- modules_prepare ----------
 
 echo "==> modules_prepare"
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="${LLVM_VER:-1}" \
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
      modules_prepare -j"$(nproc)"
 
 # ---------- vmlinux (for Module.symvers) ----------
 
 echo "==> Building vmlinux (for Module.symvers)"
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="${LLVM_VER:-1}" \
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
      vmlinux -j"$(nproc)" || \
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="${LLVM_VER:-1}" \
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
      Image -j"$(nproc)"
 
 echo "==> Kbuild environment ready"
