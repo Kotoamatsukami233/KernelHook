@@ -33,8 +33,7 @@ READELF="$(command -v llvm-readelf || command -v readelf || true)"
 [[ -n "$READELF" ]] || fail "readelf not found"
 
 # __versions section indicates modpost wrote CRC table
-if $READELF -S "$KO" | grep -q '__versions'; then
-    CRC_BYTES=$($READELF -S "$KO" | awk '/__versions/{getline; print $1; exit}')
+if $READELF -S "$KO" 2>/dev/null | grep -q '__versions'; then
     ok "__versions section present"
 else
     warn "no __versions section (CONFIG_MODVERSIONS disabled?)"
@@ -67,7 +66,7 @@ while IFS= read -r sym; do
         printf "${RED}  unexpected undef:${RESET} %s\n" "$sym" >&2
         BAD=$((BAD + 1))
     fi
-done < <($READELF -s "$KO" | awk '$7=="UND" && $8!="" {print $8}' | sort -u)
+done < <($READELF -s "$KO" 2>/dev/null | awk '$7=="UND" && $8!="" {print $8}' | sort -u)
 
 if [[ $BAD -gt 0 ]]; then
     fail "$BAD unexpected undefined symbol(s) — extend allowlist or fix code"
