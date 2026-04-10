@@ -7,8 +7,7 @@
 
 #include <linux/kernel.h>
 #include <linux/printk.h>
-#include <linux/version.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
+#if __has_include(<linux/stdarg.h>)
 #include <linux/stdarg.h>
 #else
 #include <stdarg.h>
@@ -60,9 +59,9 @@ int kmod_log_init(void)
         kp_log_func = (log_func_t)(uintptr_t)ksyms_lookup("printk");
     if (!kp_log_func && !kp_vprintk_func) return -1;
 #else
-    /* 5.15+ defines printk as a macro (printk_index_wrapper); _printk is
-     * the real exported function. On 5.10 and older, printk is a function. */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+    /* 5.15+ defines printk as a function-like macro; _printk is the real
+     * exported symbol. On older kernels printk is a plain function. */
+#ifdef printk
     kp_log_func = (log_func_t)_printk;
 #else
     kp_log_func = (log_func_t)printk;
