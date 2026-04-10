@@ -56,6 +56,8 @@ ALLOW='^(_?printk|printk_ratelimit|memcpy|memset|memmove|memcmp|__memcpy|__memse
 'on_each_cpu|flush_icache_range|__flush_dcache_area|caches_clean_inval_pou|'\
 'cpus_read_lock|cpus_read_unlock|stop_machine|'\
 'set_memory_ro|set_memory_rw|set_memory_x|set_memory_nx|'\
+'register_kprobe|unregister_kprobe|'\
+'fortify_panic|__fortify_report|'\
 '__arm64_sys_.*|aarch64_insn_.*|'\
 'preempt_count_add|preempt_count_sub|__preempt_count_add|__preempt_count_sub)$'
 
