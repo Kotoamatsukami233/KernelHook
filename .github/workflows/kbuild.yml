@@ -30,16 +30,21 @@ on:
 
 jobs:
   kbuild:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - branch: android12-5.10
+            runner: ubuntu-22.04
           - branch: android13-5.15
+            runner: ubuntu-22.04
           - branch: android14-6.1
+            runner: ubuntu-24.04
           - branch: android15-6.6
+            runner: ubuntu-24.04
           - branch: android16-6.12
+            runner: ubuntu-24.04
     name: ${{ matrix.branch }}
     env:
       KERNEL_DIR: ${{ github.workspace }}/kernel

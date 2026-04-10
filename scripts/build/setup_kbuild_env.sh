@@ -5,6 +5,9 @@
 # Installs host toolchain (if apt available), clones kernel source (if
 # KERNEL_DIR is empty), runs defconfig + modules_prepare + vmlinux.
 #
+# Toolchain compatibility is handled by the CI matrix: older kernels
+# (5.10, 5.15) run on ubuntu-22.04 (clang-14), newer on ubuntu-24.04.
+#
 # Required env:
 #   BRANCH       — GKI branch (e.g., android14-6.1)
 #   KERNEL_DIR   — where to clone/find kernel source
@@ -26,39 +29,12 @@ if [ "${SKIP_APT:-0}" != "1" ] && command -v apt-get >/dev/null 2>&1; then
     sudo apt-get update
     sudo apt-get install -y --no-install-recommends \
         bc bison flex libssl-dev libelf-dev libdw-dev cpio kmod python3 ccache \
+        clang lld llvm llvm-dev \
         gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
         rsync zstd xz-utils \
         dwarves
-
-    # Older kernels (5.10, 5.15) need clang-15 — newer clang rejects
-    # global register variables in asm/stack_pointer.h.
-    # Use LLVM=-15 suffix so kbuild picks clang-15/ld.lld-15/etc.
-    KVER="${BRANCH##*-}"
-    KVER_MAJOR="${KVER%%.*}"
-    KVER_MINOR="${KVER#*.}"
-    if [ "$KVER_MAJOR" -eq 5 ] && [ "$KVER_MINOR" -le 10 ] 2>/dev/null; then
-        echo "==> Kernel $KVER: installing clang-15 for compatibility"
-        sudo apt-get install -y --no-install-recommends clang-15 lld-15 llvm-15
-        # Kconfig checks for 'ld.lld' without suffix; ensure it exists
-        [ ! -f /usr/bin/ld.lld ] && sudo ln -s /usr/bin/ld.lld-15 /usr/bin/ld.lld || true
-        export LLVM_SUFFIX=-15
-    else
-        sudo apt-get install -y --no-install-recommends clang lld llvm llvm-dev
-        export LLVM_SUFFIX=
-    fi
-
-    echo "LLVM_SUFFIX=$LLVM_SUFFIX"
-fi
-
-# LLVM flag for make: LLVM=1 (default) or LLVM=-15 (for old kernels)
-LLVM_FLAG="${LLVM_SUFFIX:+$LLVM_SUFFIX}"
-LLVM_FLAG="${LLVM_FLAG:-1}"
-export LLVM_FLAG
-
-# Persist for subsequent CI steps (GITHUB_ENV is step-scoped)
-if [ -n "${GITHUB_ENV:-}" ]; then
-    echo "LLVM_FLAG=$LLVM_FLAG" >> "$GITHUB_ENV"
-
+    clang --version
+    ld.lld --version
 fi
 
 # ---------- Kernel source ----------
@@ -76,9 +52,7 @@ fi
 
 if [ -f "$KERNEL_OUT/Module.symvers" ] && [ -f "$KERNEL_OUT/.config" ]; then
     echo "==> Cached build output found, skipping configure + vmlinux build"
-    # Re-run modules_prepare to ensure generated headers are up to date
-    # (fast no-op if nothing changed)
-    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG"  \
+    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
          modules_prepare -j"$(nproc)"
     echo "==> Kbuild environment ready (cached)"
     exit 0
@@ -92,7 +66,7 @@ else
     CFG=defconfig
 fi
 echo "==> Configuring with $CFG"
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG"  "$CFG"
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 "$CFG"
 
 # Kernel 6.12+ needs pahole >= 1.26 for BTF; Ubuntu 24.04 has 1.25.
 # We only need Module.symvers for out-of-tree builds, not BTF.
@@ -102,21 +76,21 @@ KVER_MINOR="${KVER#*.}"
 if [ "$KVER_MAJOR" -ge 6 ] && [ "$KVER_MINOR" -ge 12 ] 2>/dev/null; then
     echo "==> Disabling BTF for kernel $KVER (pahole too old)"
     "$KERNEL_DIR/scripts/config" --file "$KERNEL_OUT/.config" --disable DEBUG_INFO_BTF
-    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG"  olddefconfig
+    make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 olddefconfig
 fi
 
 # ---------- modules_prepare ----------
 
 echo "==> modules_prepare"
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG"  \
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
      modules_prepare -j"$(nproc)"
 
 # ---------- vmlinux (for Module.symvers) ----------
 
 echo "==> Building vmlinux (for Module.symvers)"
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG"  \
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
      vmlinux -j"$(nproc)" || \
-make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM="$LLVM_FLAG"  \
+make -C "$KERNEL_DIR" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
      Image -j"$(nproc)"
 
 echo "==> Kbuild environment ready"

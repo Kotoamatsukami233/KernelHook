@@ -30,7 +30,7 @@ KVER="${BRANCH##*-}"
 echo "==> Building kh_test.ko (M=tests/kmod)"
 make -C "$KERNEL_OUT" \
      M="$ROOT/tests/kmod" \
-     ARCH=arm64 LLVM="${LLVM_FLAG:-1}" \
+     ARCH=arm64 LLVM=1 \
      KBUILD_MODPOST_WARN=1 \
      modules -j"$(nproc)"
 
@@ -45,7 +45,7 @@ if [ "$KVER" = "6.1" ]; then
     echo "==> Building kernelhook.ko (Mode C)"
     make -C "$KERNEL_OUT" \
          M="$ROOT/kmod" \
-         ARCH=arm64 LLVM="${LLVM_FLAG:-1}" \
+         ARCH=arm64 LLVM=1 \
          modules -j"$(nproc)"
 
     echo "==> Asserting Module.symvers contains all manifest exports"
@@ -66,7 +66,7 @@ if [ "$KVER" = "6.1" ]; then
          M="$ROOT/examples/kbuild_hello" \
          KBUILD_EXTRA_SYMBOLS="$ROOT/kmod/Module.symvers" \
          KERNELHOOK="$ROOT" \
-         ARCH=arm64 LLVM="${LLVM_FLAG:-1}" \
+         ARCH=arm64 LLVM=1 \
          modules -j"$(nproc)"
 
     echo "==> Asserting kbuild_hello.ko depends on kernelhook"
