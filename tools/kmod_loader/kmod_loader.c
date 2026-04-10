@@ -318,7 +318,8 @@ done:
 }
 
 /* Cached sizeof(struct module) from vendor .ko, populated by crc_from_vendor_ko */
-static uint32_t g_g_ko_this_module_size = 0;
+static uint32_t g_ko_this_module_size = 0;
+static int ko_loaded = 0;
 
 /* Method 3: Scan vendor .ko files for __versions CRC */
 int crc_from_vendor_ko(const char *sym, uint32_t *out)
@@ -334,7 +335,6 @@ int crc_from_vendor_ko(const char *sym, uint32_t *out)
     };
     /* Cache: read one .ko file and extract ALL its CRCs */
     static uint8_t *ko_buf = NULL;
-    static int ko_loaded = 0;
     static struct { char name[56]; uint32_t crc; } ko_crcs[64];
     static int ko_crc_count = 0;
 
