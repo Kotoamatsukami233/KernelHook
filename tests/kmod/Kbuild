@@ -24,4 +24,6 @@ kh_test-y := test_main.o test_hook_kernel.o \
     ../../src/arch/arm64/insn.o \
     ../../src/arch/arm64/pgtable.o
 
-ccflags-y := -I$(src)/../../include -I$(src)/../../include/arch/arm64 -I$(src)
+ccflags-y := -I$(src)/../../include -I$(src)/../../include/arch/arm64 -I$(src) \
+             -Wno-declaration-after-statement \
+             -Wno-unknown-sanitizers

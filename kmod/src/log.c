@@ -7,7 +7,12 @@
 
 #include <linux/kernel.h>
 #include <linux/printk.h>
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
 #include <linux/stdarg.h>
+#else
+#include <stdarg.h>
+#endif
 #include <ksyms.h>
 
 /* hook.h provides KCFI_EXEMPT — pure macros, kbuild-safe after the

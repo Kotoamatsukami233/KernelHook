@@ -2,11 +2,12 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Set up a kbuild environment for building out-of-tree GKI modules.
 #
+# NOTE: CI now uses DDK containers (ghcr.io/ylarod/ddk-min) which bundle
+# the correct toolchain and kernel headers. This script is kept for local
+# builds on a Linux host where you want to compile against kernel source.
+#
 # Installs host toolchain (if apt available), clones kernel source (if
 # KERNEL_DIR is empty), runs defconfig + modules_prepare + vmlinux.
-#
-# Toolchain compatibility is handled by the CI matrix: older kernels
-# (5.10, 5.15) run on ubuntu-22.04 (clang-14), newer on ubuntu-24.04.
 #
 # Required env:
 #   BRANCH       — GKI branch (e.g., android14-6.1)
